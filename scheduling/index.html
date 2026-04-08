@@ -408,11 +408,22 @@ tr.coach-locked > td.t-today { background: #fef9c3 !important; }
 </head>
 <body>
 
+<div id="loading-overlay" style="position:fixed;inset:0;background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:14px;transition:opacity 0.3s;">
+  <div style="width:32px;height:32px;border:3px solid rgba(255,255,255,0.12);border-top-color:#2563eb;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+  <div style="color:#64748b;font-size:13px;">Loading schedule…</div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<div id="preview-banner" style="display:none;background:#fff8e1;border-bottom:2px solid #f0c040;padding:9px 24px;font-size:12px;color:#7a5a00;align-items:center;gap:8px;">
+  ⚠ Preview mode — changes save to this browser only. Deploy via Apps Script for shared live sync.
+</div>
+
 <div id="header">
   <div>
     <div class="app-name">Coach Scheduler</div>
     <div class="app-sub">Weekly template &mdash; SATC &middot; Pharr &middot; Wilco</div>
   </div>
+  <div id="sync-pill" style="font-size:11px;padding:3px 10px;border-radius:99px;font-weight:500;"></div>
 </div>
 
 <div id="tabs">
@@ -541,13 +552,13 @@ const INITIAL_SCHEDULE = {
   '27_6': { morning: 'pharr', evening: null },
   // Chelsea (id:3) — Sat morning SATC
   '3_5': { morning: 'satc', evening: null },
-  // Oleg (id:21) — Mon double; Tue Wed Sat evenings; Sun morning; Thu Fri off
+  // Oleg (id:21) — Mon double; Tue Wed Sat evenings; Sun morning
   '21_0': { morning: 'pharr', evening: 'pharr' },
   '21_1': { morning: null,    evening: 'pharr' },
   '21_2': { morning: null,    evening: 'pharr' },
   '21_5': { morning: null,    evening: 'pharr' },
   '21_6': { morning: 'pharr', evening: null    },
-  // Mark (id:16) — Mon double; Tue Wed Sat Sun mornings; Thu Fri off
+  // Mark (id:16) — Mon double; Tue Wed Sat Sun mornings
   '16_0': { morning: 'pharr', evening: 'pharr' },
   '16_1': { morning: 'pharr', evening: null    },
   '16_2': { morning: 'pharr', evening: null    },
@@ -565,20 +576,27 @@ const INITIAL_SCHEDULE = {
   '10_4': { morning: 'pharr', evening: 'pharr' },
   '10_5': { morning: null,    evening: 'pharr' },
   '10_6': { morning: 'pharr', evening: null    },
-  // Tim (id:24) — Wed Thu Fri Sun evenings Pharr; Sat morning Pharr
+  // Tim (id:24) — Wed Thu Fri evenings Pharr; Sat morning; Sun evening
   '24_2': { morning: null,    evening: 'pharr' },
   '24_3': { morning: null,    evening: 'pharr' },
   '24_4': { morning: null,    evening: 'pharr' },
   '24_5': { morning: 'pharr', evening: null    },
   '24_6': { morning: null,    evening: 'pharr' },
+  // Rhea (id:22) — Tue double; Wed morning; Thu evening; Fri morning; Sat morning
+  '22_1': { morning: 'pharr', evening: 'pharr' },
+  '22_2': { morning: 'pharr', evening: null    },
+  '22_3': { morning: null,    evening: 'pharr' },
+  '22_4': { morning: 'pharr', evening: null    },
+  '22_5': { morning: 'pharr', evening: null    },
   // Evie (id:7) — hybrid SATC/Pharr
-  // Mon: morning SATC; Tue Wed: morning Pharr; Fri: evening SATC; Sat: morning Pharr; Sun: morning SATC
-  '7_0': { morning: 'satc',  evening: null  },
-  '7_1': { morning: 'pharr', evening: null  },
+  // Mon: off; Tue: morning SATC; Wed: morning Pharr; Thu: morning Pharr; Fri: evening SATC; Sat: morning Pharr; Sun: morning SATC
+  '7_0': { morning: null,   evening: null   },
+  '7_1': { morning: 'satc', evening: null   },
   '7_2': { morning: 'pharr', evening: null  },
-  '7_4': { morning: null,    evening: 'satc' },
+  '7_3': { morning: 'pharr', evening: null  },
+  '7_4': { morning: null,   evening: 'satc' },
   '7_5': { morning: 'pharr', evening: null  },
-  '7_6': { morning: 'satc',  evening: null  },
+  '7_6': { morning: 'satc', evening: null   },
   // Evan (id:6) — hybrid SATC/Pharr
   // Mon: morning SATC + evening Pharr; Tue: double Pharr; Wed: evening Pharr
   // Thu: double Pharr; Sun: double SATC
@@ -594,7 +612,7 @@ const INITIAL_SCHEDULE = {
   '1_4': { morning: 'satc', evening: null },
   '1_5': { morning: 'satc', evening: null },
   '1_6': { morning: 'satc', evening: null },
-  // Augusto (id:2) — Mon off; Tue-Sat evenings; Sun morning+evening
+  // Augusto (id:2) — Tue-Sat evenings; Sun double
   '2_1': { morning: null,   evening: 'satc' },
   '2_2': { morning: null,   evening: 'satc' },
   '2_3': { morning: null,   evening: 'satc' },
@@ -607,7 +625,7 @@ const INITIAL_SCHEDULE = {
   '5_2': { morning: null,   evening: 'satc' },
   '5_5': { morning: 'satc', evening: 'satc' },
   '5_6': { morning: 'satc', evening: null   },
-  // Geronimo (id:8) — Mon double; Tue Wed Thu Fri mornings; weekend off
+  // Geronimo (id:8) — Mon double; Tue Wed Thu Fri mornings
   '8_0': { morning: 'satc', evening: 'satc' },
   '8_1': { morning: 'satc', evening: null   },
   '8_2': { morning: 'satc', evening: null   },
@@ -625,57 +643,115 @@ const INITIAL_SCHEDULE = {
   '13_3': { morning: null,   evening: 'satc' },
   '13_4': { morning: null,   evening: 'satc' },
   '13_5': { morning: 'satc', evening: null   },
-  // Kolton (id:15) — Tue Thu Fri Sat Sun evenings; Mon Wed off
+  // Kolton (id:15) — Tue Thu Fri Sat Sun evenings
   '15_1': { morning: null, evening: 'satc' },
   '15_3': { morning: null, evening: 'satc' },
   '15_4': { morning: null, evening: 'satc' },
   '15_5': { morning: null, evening: 'satc' },
   '15_6': { morning: null, evening: 'satc' },
-  // Mateo (id:17) — Mon Tue evenings; Wed double; Fri morning; Sun evening
+  // Mateo (id:17) — Mon evening; Tue off; Wed evening; Thu double; Fri morning; Sat evening; Sun evening
   '17_0': { morning: null,   evening: 'satc' },
-  '17_1': { morning: null,   evening: 'satc' },
-  '17_2': { morning: 'satc', evening: 'satc' },
+  '17_1': { morning: null,   evening: null   },
+  '17_2': { morning: null,   evening: 'satc' },
+  '17_3': { morning: 'satc', evening: 'satc' },
   '17_4': { morning: 'satc', evening: null   },
+  '17_5': { morning: null,   evening: 'satc' },
   '17_6': { morning: null,   evening: 'satc' },
-  // Nick (id:19) — Mon through Sat mornings; Sun off
+  // Nick (id:19) — Mon through Sat mornings
   '19_0': { morning: 'satc', evening: null },
   '19_1': { morning: 'satc', evening: null },
   '19_2': { morning: 'satc', evening: null },
   '19_3': { morning: 'satc', evening: null },
   '19_4': { morning: 'satc', evening: null },
   '19_5': { morning: 'satc', evening: null },
-  // Nolan (id:20) — Mon through Sat evenings; Sun off
+  // Nolan (id:20) — Mon through Sat evenings
   '20_0': { morning: null, evening: 'satc' },
   '20_1': { morning: null, evening: 'satc' },
   '20_2': { morning: null, evening: 'satc' },
   '20_3': { morning: null, evening: 'satc' },
   '20_4': { morning: null, evening: 'satc' },
   '20_5': { morning: null, evening: 'satc' },
-  // Tom (id:25) — Wed through Sun evenings; Mon Tue off
-  '25_2': { morning: null, evening: 'satc' },
-  '25_3': { morning: null, evening: 'satc' },
-  '25_4': { morning: null, evening: 'satc' },
-  '25_5': { morning: null, evening: 'satc' },
-  '25_6': { morning: null, evening: 'satc' },
+  // Tom (id:25) — Wed through Sun mornings
+  '25_2': { morning: 'satc', evening: null },
+  '25_3': { morning: 'satc', evening: null },
+  '25_4': { morning: 'satc', evening: null },
+  '25_5': { morning: 'satc', evening: null },
+  '25_6': { morning: 'satc', evening: null },
 };
+
+// ── BACKEND DETECTION ─────────────────────────────────────────────────────────
+const IS_APPS_SCRIPT = (typeof google !== 'undefined' && google.script && google.script.run);
+
+function runScript(fn, ...args) {
+  return new Promise((resolve, reject) => {
+    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args);
+  });
+}
+
+function setSyncPill(state, text) {
+  const el = document.getElementById('sync-pill');
+  if (!el) return;
+  const styles = {
+    live:   'background:rgba(22,163,74,0.15);color:#16a34a',
+    saving: 'background:rgba(37,99,235,0.12);color:#2563eb',
+    error:  'background:rgba(220,38,38,0.12);color:#dc2626',
+    local:  'background:rgba(100,116,139,0.15);color:#64748b',
+  };
+  el.style.cssText = (styles[state] || '') + ';font-size:11px;padding:3px 10px;border-radius:99px;font-weight:500;';
+  const icons = { live:'●', saving:'↻', error:'⚠', local:'◌' };
+  el.textContent = (icons[state] || '') + ' ' + text;
+}
+
+function hideLoadingOverlay() {
+  const o = document.getElementById('loading-overlay');
+  if (!o) return;
+  o.style.opacity = '0';
+  setTimeout(() => o.style.display = 'none', 320);
+}
+
+let saveTimer = null;
 
 function sk(cid, day)    { return `${cid}_${day}`; }
 function gs(cid, day)    { return schedule[sk(cid, day)] || { morning: null, evening: null }; }
 function ss(cid, day, v) {
   const key = sk(cid, day);
-  schedule[key] = v; // always store, even if both null, so user edits override INITIAL_SCHEDULE on reload
-  try { localStorage.setItem('coach_template_v1', JSON.stringify(schedule)); } catch(e) {}
-}
-function loadSched() {
-  try {
-    const saved = localStorage.getItem('coach_template_v1');
-    const stored = saved ? JSON.parse(saved) : {};
-    // Merge: stored data wins; fill missing keys from INITIAL_SCHEDULE
-    schedule = { ...INITIAL_SCHEDULE, ...stored };
-  } catch(e) {
-    schedule = { ...INITIAL_SCHEDULE };
+  schedule[key] = v;
+  if (IS_APPS_SCRIPT) {
+    setSyncPill('saving', 'Saving…');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      try {
+        await runScript('saveShift', key, v.morning, v.evening);
+        setSyncPill('live', 'Saved ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
+      } catch(e) { setSyncPill('error', 'Save failed'); }
+    }, 600);
+  } else {
+    try { localStorage.setItem('coach_template_v1', JSON.stringify(schedule)); } catch(e) {}
   }
-  try { localStorage.setItem('coach_template_v1', JSON.stringify(schedule)); } catch(e) {}
+}
+
+async function loadSched() {
+  if (IS_APPS_SCRIPT) {
+    try {
+      const stored = await runScript('getScheduleData');
+      schedule = { ...INITIAL_SCHEDULE, ...(stored || {}) };
+      setSyncPill('live', 'Live');
+    } catch(e) {
+      schedule = { ...INITIAL_SCHEDULE };
+      setSyncPill('error', 'Load failed — using defaults');
+    }
+  } else {
+    document.getElementById('preview-banner').style.display = 'flex';
+    setSyncPill('local', 'Preview only');
+    try {
+      const saved = localStorage.getItem('coach_template_v1');
+      const stored = saved ? JSON.parse(saved) : {};
+      schedule = { ...INITIAL_SCHEDULE, ...stored };
+    } catch(e) {
+      schedule = { ...INITIAL_SCHEDULE };
+    }
+    try { localStorage.setItem('coach_template_v1', JSON.stringify(schedule)); } catch(e) {}
+  }
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -1503,11 +1579,14 @@ function setTab(tab) {
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-loadSched();
-loadLocks();
-loadReqs();
-updateReqBadge();
-render();
+(async () => {
+  await loadSched();
+  loadLocks();
+  loadReqs();
+  updateReqBadge();
+  render();
+  hideLoadingOverlay();
+})();
 </script>
 </body>
 </html>
