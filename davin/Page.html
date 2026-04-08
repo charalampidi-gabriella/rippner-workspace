@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Davin — Branch Manager Progress</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --charcoal: #1B4458;
+    --platinum: #F1F5F5;
+    --steel: #7CA6BA;
+    --lime: #95D600;
+    --border: #d8e4ea;
+    --s1: #2A7A3B; --s1-bg: #eaf7ed;
+    --s2: #B07D00; --s2-bg: #fdf6e3;
+    --s3: #C0392B; --s3-bg: #fdecea;
+    --s4: #5A5A6E; --s4-bg: #f0f0f5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Barlow', sans-serif; font-weight: 300; font-size: 15px; background: var(--platinum); color: var(--charcoal); min-height: 100vh; }
+
+  /* LOADING */
+  #loading-overlay {
+    position: fixed; inset: 0; background: var(--charcoal);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 999; gap: 16px; transition: opacity 0.35s;
+  }
+  #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.15); border-top-color: var(--lime); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading-overlay p { color: var(--steel); font-size: 13px; }
+
+  /* PREVIEW BANNER */
+  #preview-banner {
+    background: #fff8e1; border-bottom: 2px solid #f0c040;
+    padding: 10px 40px; font-size: 12px; color: #7a5a00;
+    display: none; align-items: center; gap: 8px;
+  }
+  #preview-banner.visible { display: flex; }
+
+  /* HEADER */
+  header { background: var(--charcoal); color: white; padding: 28px 40px 24px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; }
+  header h1 { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: 0.5px; line-height: 1.1; }
+  header h1 span { color: var(--lime); }
+  header p { font-size: 13px; color: var(--steel); margin-top: 4px; font-weight: 300; }
+  #header-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  #sync-pill { font-size: 11px; padding: 3px 10px; border-radius: 99px; font-weight: 500; transition: all 0.2s; }
+  #sync-pill.live   { background: rgba(42,122,59,0.25); color: #6fcf82; }
+  #sync-pill.saving { background: rgba(149,214,0,0.15); color: var(--lime); }
+  #sync-pill.error  { background: rgba(192,57,43,0.2);  color: #e88; }
+  #sync-pill.local  { background: rgba(90,90,110,0.25); color: #aab; }
+
+  /* SUMMARY */
+  #summary { background: white; border-bottom: 1px solid var(--border); padding: 16px 40px; display: flex; gap: 28px; flex-wrap: wrap; align-items: center; }
+  .stat { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .stat-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+  .stat-count { font-weight: 600; font-size: 16px; }
+  #progress-bar-wrap { flex: 1; min-width: 160px; height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; display: flex; }
+  .pb-seg { height: 100%; transition: width 0.4s ease; }
+
+  /* LEGEND */
+  #legend { padding: 16px 40px 0; display: flex; gap: 10px; flex-wrap: wrap; }
+  .legend-btn { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 99px; border: 1.5px solid transparent; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .legend-btn .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .legend-btn[data-active="true"] { border-color: currentColor; }
+  .lb-1 { color: var(--s1); background: var(--s1-bg); }
+  .lb-2 { color: var(--s2); background: var(--s2-bg); }
+  .lb-3 { color: var(--s3); background: var(--s3-bg); }
+  .lb-4 { color: var(--s4); background: var(--s4-bg); }
+
+  /* MAIN */
+  main { padding: 20px 40px 60px; }
+  .section { margin-top: 28px; }
+  .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; cursor: pointer; user-select: none; }
+  .section-num { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 1.5px; color: var(--steel); text-transform: uppercase; }
+  .section-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 17px; letter-spacing: 0.3px; }
+  .section-mini-bar { flex: 1; height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; display: flex; min-width: 60px; }
+  .section-toggle { font-size: 12px; color: var(--steel); margin-left: auto; flex-shrink: 0; }
+  .section-body { display: grid; gap: 7px; }
+  .section-body.collapsed { display: none; }
+
+  /* CARD */
+  .resp-card { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 13px 16px; display: flex; align-items: flex-start; gap: 14px; transition: box-shadow 0.2s; }
+  .resp-card:hover { box-shadow: 0 2px 8px rgba(27,68,88,0.07); }
+  .resp-card.custom { border-left: 3px solid var(--steel); }
+  .resp-left { flex: 1; min-width: 0; }
+  .resp-text { font-size: 14px; line-height: 1.55; font-weight: 300; }
+  .resp-text[contenteditable="true"] { outline: none; border-bottom: 1px dashed var(--border); padding-bottom: 2px; }
+  .resp-text[contenteditable="true"]:focus { border-bottom-color: var(--steel); }
+  .resp-meta { margin-top: 4px; font-size: 11px; color: var(--steel); display: none; }
+  .resp-card[data-status]:not([data-status="0"]) .resp-meta { display: block; }
+  .note-saved { margin-top: 6px; font-size: 12px; color: #555; font-style: italic; line-height: 1.4; }
+  .note-toggle { background: none; border: none; font-size: 11px; color: var(--steel); cursor: pointer; margin-top: 5px; display: inline-block; padding: 0; font-family: 'Barlow', sans-serif; }
+  .note-toggle:hover { color: var(--charcoal); }
+  .note-input { margin-top: 6px; width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 300; color: var(--charcoal); resize: vertical; min-height: 58px; display: none; outline: none; }
+  .note-input:focus { border-color: var(--steel); }
+  .note-input.open { display: block; }
+
+  /* DELETE BUTTON */
+  .delete-btn { background: none; border: none; color: var(--border); font-size: 18px; line-height: 1; cursor: pointer; flex-shrink: 0; align-self: center; padding: 0 2px; transition: color 0.15s; }
+  .delete-btn:hover { color: var(--s3); }
+
+  /* STATUS SELECT */
+  .status-select-wrap { flex-shrink: 0; padding-top: 2px; }
+  .status-select { appearance: none; -webkit-appearance: none; border: none; border-radius: 99px; padding: 5px 10px; font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 500; cursor: pointer; outline: none; min-width: 148px; text-align: center; transition: background 0.2s, color 0.2s; }
+  .s-0 { background: #f0f0f5; color: #5A5A6E; }
+  .s-1 { background: var(--s1-bg); color: var(--s1); }
+  .s-2 { background: var(--s2-bg); color: var(--s2); }
+  .s-3 { background: var(--s3-bg); color: var(--s3); }
+  .s-4 { background: var(--s4-bg); color: var(--s4); }
+
+  /* ADD BUTTON */
+  .add-resp-btn { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 10px 14px; background: white; border: 1.5px dashed var(--border); border-radius: 10px; width: 100%; cursor: pointer; font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 400; color: var(--steel); transition: border-color 0.15s, color 0.15s; }
+  .add-resp-btn:hover { border-color: var(--steel); color: var(--charcoal); }
+  .add-resp-btn .plus { font-size: 18px; line-height: 1; color: var(--lime); font-weight: 600; }
+
+  /* FILTER */
+  body.filter-1 .resp-card:not([data-status="1"]),
+  body.filter-2 .resp-card:not([data-status="2"]),
+  body.filter-3 .resp-card:not([data-status="3"]),
+  body.filter-4 .resp-card:not([data-status="4"]) { opacity: 0.2; pointer-events: none; }
+
+  footer { text-align: center; font-size: 11px; color: var(--steel); padding: 20px; border-top: 1px solid var(--border); background: white; margin-top: 20px; }
+
+  @media (max-width: 640px) {
+    header, #summary, #legend, main, #preview-banner { padding-left: 16px; padding-right: 16px; }
+    .status-select { min-width: 110px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p>Loading tracker…</p>
+</div>
+
+<div id="preview-banner">
+  ⚠ Preview mode — changes won't be saved. Deploy via Apps Script to enable live sync.
+</div>
+
+<header>
+  <div>
+    <h1>Davin — <span>Branch Manager</span> Progress</h1>
+    <p>Rippner Tennis · Leadership Development Tracker</p>
+  </div>
+  <div id="header-right">
+    <div id="sync-pill" class="live">● Live</div>
+    <div id="last-saved"></div>
+  </div>
+</header>
+
+<div id="summary">
+  <div class="stat"><div class="stat-dot" style="background:var(--s1)"></div><div><span class="stat-count" id="cnt-1">0</span> Ownership</div></div>
+  <div class="stat"><div class="stat-dot" style="background:var(--s2)"></div><div><span class="stat-count" id="cnt-2">0</span> Supervision</div></div>
+  <div class="stat"><div class="stat-dot" style="background:var(--s3)"></div><div><span class="stat-count" id="cnt-3">0</span> Not Doing</div></div>
+  <div class="stat"><div class="stat-dot" style="background:var(--s4)"></div><div><span class="stat-count" id="cnt-4">0</span> Not Trained</div></div>
+  <div id="progress-bar-wrap">
+    <div class="pb-seg" id="pb-1" style="background:var(--s1);width:0%"></div>
+    <div class="pb-seg" id="pb-2" style="background:var(--s2);width:0%"></div>
+    <div class="pb-seg" id="pb-3" style="background:var(--s3);width:0%"></div>
+    <div class="pb-seg" id="pb-4" style="background:var(--s4);width:0%"></div>
+  </div>
+</div>
+
+<div id="legend">
+  <button class="legend-btn lb-1" data-filter="1" data-active="false"><span class="dot" style="background:var(--s1)"></span>Fully Taken Ownership</button>
+  <button class="legend-btn lb-2" data-filter="2" data-active="false"><span class="dot" style="background:var(--s2)"></span>Trained · Needs Supervision</button>
+  <button class="legend-btn lb-3" data-filter="3" data-active="false"><span class="dot" style="background:var(--s3)"></span>Trained · Not Doing</button>
+  <button class="legend-btn lb-4" data-filter="4" data-active="false"><span class="dot" style="background:var(--s4)"></span>Not Trained Yet</button>
+</div>
+
+<main id="main"></main>
+<footer>Rippner Tennis · Internal Use Only · Data synced to Google Sheets</footer>
+
+<script>
+// ── ENVIRONMENT DETECTION ───────────────────────────────────
+const IS_APPS_SCRIPT = (typeof google !== "undefined" && google.script && google.script.run);
+
+if (!IS_APPS_SCRIPT) {
+  document.getElementById("preview-banner").classList.add("visible");
+  const pill = document.getElementById("sync-pill");
+  pill.className = "local";
+  pill.textContent = "◌ Preview only";
+}
+
+// ── SECTIONS DATA ───────────────────────────────────────────
+const SECTIONS = [
+  {
+    num:"01", title:"Operations & Facility Management",
+    items:[
+      "Ensure full court coverage and front desk coverage. Get help from Albert and Gaby as needed.",
+      "Complete and oversee the Daily Facility Walkthrough Checklist.",
+      "Ensure balls are picked up and courts are clean.",
+      "Report and follow up on maintenance issues.",
+      "Monitor stringing needs with Albert.",
+      "Monitor coach arrival times and address lateness or reliability issues.",
+      "Serve as MOC when scheduled.",
+      "Monitor and escalate incident reports. Ensure major events are documented immediately — notify senior management in real time and initiate escalation discussion as needed.",
+      "Manage proper weekend and event handoffs (camps, mixers, clinics).",
+      "Respond to City emails professionally and in a timely manner.",
+      "Complete 10 monthly surveys.",
+      "Update flyers and promotional materials.",
+      "Ensure staff is up to date with CPR/fingerprints and reimbursement checks; update the document as needed.",
+    ]
+  },
+  {
+    num:"02", title:"Programs, Scheduling & Financial Oversight",
+    items:[
+      "Select and structure classes for Semester Programs.",
+      "Manage class entry and monitor withdrawals, waitlists, overflow demand, and open spots from transfers.",
+      "Conduct quarterly class reviews and report audits.",
+      "Monitor class fill rates and substitutions.",
+      "Ensure camps and events maintain correct coach-to-player ratios.",
+      "Review courtsheets for payroll on the 16th and 1st of each month and notify Gaby.",
+      "Oversee site inventory and pro shop stock (including staff equipment needs).",
+      "Monitor expenses to maximize profitability and reduce loss.",
+      "Prevent revenue leakage: free items, improper refunds, not shortening clinics/coaches, poor inventory control.",
+      "Provide support during PlayByPoint (PBP) transition.",
+    ]
+  },
+  {
+    num:"03", title:"Staff Leadership & Accountability",
+    items:[
+      "Manage new coach training.",
+      "If a new coach is assigned to a 0-enrollment class, reassign them to train with senior coaches.",
+      "Pair new coaches with experienced staff.",
+      "Monitor drill quality, clinic structure, and energy.",
+      "Identify when workshops or retraining are needed.",
+      "Approve and manage time-off requests.",
+      "Ensure Front Desk and AM compliance with procedures.",
+      "Oversee Sexual Harassment and Concussion prevention training.",
+      "Identify and address accountability issues (e.g., improper refunds, bathrooms, false information, upselling failures) and loop in the management team.",
+    ]
+  },
+  {
+    num:"04", title:"Culture, Customer Experience & Standards",
+    items:[
+      "Maintain high standards of customer service across Coaches, AMs, and Front Desk.",
+      "Ensure professionalism on court and at the desk.",
+      "Promote events to customers and keep coaches informed.",
+      "Foster a culture of accountability, inclusion, and leadership.",
+      "Ensure internal practices align with external messaging.",
+      "Drive performance improvements across the location.",
+    ]
+  }
+];
+
+const STATUS_LABELS = {
+  "0":"— Not Set —",
+  "1":"✓ Fully Taken Ownership",
+  "2":"◑ Trained · Needs Supervision",
+  "3":"✕ Trained · Not Doing",
+  "4":"○ Not Trained Yet"
+};
+
+let sheetData = {};
+let saveTimer = null;
+
+// ── SYNC ────────────────────────────────────────────────────
+function runScript(fn, ...args) {
+  return new Promise((resolve, reject) => {
+    if (!IS_APPS_SCRIPT) { resolve(null); return; }
+    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args);
+  });
+}
+
+async function loadData() {
+  try {
+    const data = await runScript("getAllData");
+    sheetData = data || {};
+  } catch(e) {
+    setSyncStatus("error", "Load failed");
+  }
+  buildUI();
+  hideOverlay();
+  if (IS_APPS_SCRIPT) setSyncStatus("live", "Live");
+}
+
+function queueSave(key, status, note) {
+  if (!IS_APPS_SCRIPT) return;
+  setSyncStatus("saving", "Saving…");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      const res = await runScript("saveItem", key, status, note);
+      if (res) {
+        setSyncStatus("live", "Saved " + new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}));
+        const metaEl = document.getElementById("meta-" + key);
+        if (metaEl) metaEl.textContent = fmtDate(res.updatedAt);
+      }
+    } catch(e) { setSyncStatus("error", "Save failed"); }
+  }, 700);
+}
+
+// ── HELPERS ─────────────────────────────────────────────────
+function setSyncStatus(state, text) {
+  const el = document.getElementById("sync-pill");
+  el.className = state;
+  const icons = { live: "●", saving: "↻", error: "⚠", local: "◌" };
+  el.textContent = (icons[state] || "") + " " + text;
+}
+function hideOverlay() {
+  const o = document.getElementById("loading-overlay");
+  o.classList.add("hidden");
+  setTimeout(() => o.style.display = "none", 400);
+}
+function fmtDate(iso) {
+  if (!iso) return "";
+  try { return "Updated " + new Date(iso).toLocaleDateString(); } catch { return ""; }
+}
+function itemKey(si, ri) { return "s" + si + "_r" + ri; }
+function customKey(si) { return "s" + si + "_c" + Date.now().toString(36); }
+
+// ── BUILD UI ────────────────────────────────────────────────
+function buildUI() {
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+
+  SECTIONS.forEach((sec, si) => {
+    const section = document.createElement("div");
+    section.className = "section";
+    section.dataset.si = si;
+
+    const hdr = document.createElement("div");
+    hdr.className = "section-header";
+    hdr.innerHTML = `
+      <span class="section-num">${sec.num}</span>
+      <span class="section-title">${sec.title}</span>
+      <div class="section-mini-bar">
+        <div class="pb-seg" id="smb-${si}-1" style="background:var(--s1);width:0%"></div>
+        <div class="pb-seg" id="smb-${si}-2" style="background:var(--s2);width:0%"></div>
+        <div class="pb-seg" id="smb-${si}-3" style="background:var(--s3);width:0%"></div>
+        <div class="pb-seg" id="smb-${si}-4" style="background:var(--s4);width:0%"></div>
+      </div>
+      <span class="section-toggle">▾</span>`;
+
+    const body = document.createElement("div");
+    body.className = "section-body";
+    body.id = "body-" + si;
+
+    hdr.addEventListener("click", () => {
+      body.classList.toggle("collapsed");
+      hdr.querySelector(".section-toggle").textContent =
+        body.classList.contains("collapsed") ? "▸" : "▾";
+    });
+
+    sec.items.forEach((text, ri) => {
+      body.appendChild(makeCard(si, itemKey(si, ri), text, false));
+    });
+
+    Object.keys(sheetData)
+      .filter(k => k.startsWith("s" + si + "_c") && sheetData[k].text)
+      .forEach(k => body.appendChild(makeCard(si, k, sheetData[k].text, true)));
+
+    const addBtn = document.createElement("button");
+    addBtn.className = "add-resp-btn";
+    addBtn.innerHTML = `<span class="plus">+</span> Add responsibility`;
+    addBtn.addEventListener("click", () => {
+      const key = customKey(si);
+      sheetData[key] = { status: "0", note: "", text: "" };
+      queueSave(key, "0", "");
+      const card = makeCard(si, key, "", true);
+      body.insertBefore(card, addBtn);
+      card.querySelector(".resp-text").focus();
+      updateStats();
+    });
+
+    body.appendChild(addBtn);
+    section.append(hdr, body);
+    main.appendChild(section);
+  });
+
+  updateStats();
+}
+
+function makeCard(si, key, text, isCustom) {
+  const saved = sheetData[key] || {};
+  const status = saved.status || "0";
+  const note = saved.note || "";
+
+  const card = document.createElement("div");
+  card.className = "resp-card" + (isCustom ? " custom" : "");
+  card.dataset.status = status;
+
+  const textEl = document.createElement("div");
+  textEl.className = "resp-text";
+  textEl.textContent = text;
+  if (isCustom) {
+    textEl.contentEditable = "true";
+    textEl.setAttribute("placeholder", "Describe responsibility…");
+    let td;
+    textEl.addEventListener("input", () => {
+      clearTimeout(td);
+      td = setTimeout(() => {
+        sheetData[key] = sheetData[key] || {};
+        sheetData[key].text = textEl.textContent.trim();
+        queueSave(key, sel.value, noteInput.value);
+      }, 800);
+    });
+  }
+
+  const metaEl = document.createElement("div");
+  metaEl.className = "resp-meta";
+  metaEl.id = "meta-" + key;
+  metaEl.textContent = fmtDate(saved.updatedAt);
+
+  const noteSaved = document.createElement("div");
+  noteSaved.className = "note-saved";
+  noteSaved.textContent = note;
+  noteSaved.style.display = note ? "block" : "none";
+
+  const noteToggle = document.createElement("button");
+  noteToggle.className = "note-toggle";
+  noteToggle.textContent = note ? "Edit note ▾" : "+ Add note";
+
+  const noteInput = document.createElement("textarea");
+  noteInput.className = "note-input";
+  noteInput.placeholder = "Add a note…";
+  noteInput.value = note;
+
+  noteToggle.addEventListener("click", () => {
+    noteInput.classList.toggle("open");
+    if (noteInput.classList.contains("open")) {
+      noteToggle.textContent = "Hide note ▴";
+      noteSaved.style.display = "none";
+      noteInput.focus();
+    } else {
+      noteToggle.textContent = noteInput.value ? "Edit note ▾" : "+ Add note";
+      noteSaved.textContent = noteInput.value;
+      noteSaved.style.display = noteInput.value ? "block" : "none";
+    }
+  });
+
+  let nd;
+  noteInput.addEventListener("input", () => {
+    clearTimeout(nd);
+    nd = setTimeout(() => {
+      sheetData[key] = sheetData[key] || {};
+      sheetData[key].note = noteInput.value;
+      queueSave(key, sel.value, noteInput.value);
+    }, 1000);
+  });
+
+  const sel = document.createElement("select");
+  sel.className = "status-select s-" + status;
+  sel.innerHTML = Object.entries(STATUS_LABELS)
+    .map(([v,l]) => `<option value="${v}"${v===status?" selected":""}>${l}</option>`).join("");
+  sel.addEventListener("change", () => {
+    const v = sel.value;
+    sel.className = "status-select s-" + v;
+    card.dataset.status = v;
+    sheetData[key] = sheetData[key] || {};
+    sheetData[key].status = v;
+    queueSave(key, v, noteInput.value);
+    updateStats();
+  });
+
+  const left = document.createElement("div");
+  left.className = "resp-left";
+  left.append(textEl, metaEl, noteSaved, noteToggle, noteInput);
+
+  const wrap = document.createElement("div");
+  wrap.className = "status-select-wrap";
+  wrap.appendChild(sel);
+
+  card.append(left, wrap);
+
+  if (isCustom) {
+    const delBtn = document.createElement("button");
+    delBtn.className = "delete-btn";
+    delBtn.title = "Remove this item";
+    delBtn.textContent = "×";
+    delBtn.addEventListener("click", () => {
+      if (confirm("Remove this responsibility?")) {
+        card.remove();
+        delete sheetData[key];
+        if (IS_APPS_SCRIPT) runScript("deleteItem", key);
+        updateStats();
+      }
+    });
+    card.appendChild(delBtn);
+  }
+
+  return card;
+}
+
+// ── STATS ────────────────────────────────────────────────────
+function updateStats() {
+  const cards = document.querySelectorAll(".resp-card");
+  const counts = {"1":0,"2":0,"3":0,"4":0};
+  cards.forEach(c => { if (c.dataset.status > 0) counts[c.dataset.status]++; });
+  const total = cards.length;
+  ["1","2","3","4"].forEach(s => {
+    document.getElementById("cnt-" + s).textContent = counts[s];
+    document.getElementById("pb-" + s).style.width = (total ? counts[s]/total*100 : 0) + "%";
+  });
+  SECTIONS.forEach((_, si) => {
+    const sc = {"1":0,"2":0,"3":0,"4":0};
+    document.querySelectorAll(`[data-si="${si}"] .resp-card`).forEach(c => {
+      if (+c.dataset.status > 0) sc[c.dataset.status]++;
+    });
+    const st = document.querySelectorAll(`[data-si="${si}"] .resp-card`).length;
+    ["1","2","3","4"].forEach(s => {
+      const el = document.getElementById(`smb-${si}-${s}`);
+      if (el) el.style.width = (st ? sc[s]/st*100 : 0) + "%";
+    });
+  });
+}
+
+// ── FILTER ───────────────────────────────────────────────────
+let activeFilter = null;
+document.querySelectorAll(".legend-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const f = btn.dataset.filter;
+    if (activeFilter === f) {
+      document.body.classList.remove("filter-" + f);
+      btn.dataset.active = "false";
+      activeFilter = null;
+    } else {
+      if (activeFilter) {
+        document.body.classList.remove("filter-" + activeFilter);
+        document.querySelector(`.legend-btn[data-filter="${activeFilter}"]`).dataset.active = "false";
+      }
+      document.body.classList.add("filter-" + f);
+      btn.dataset.active = "true";
+      activeFilter = f;
+    }
+  });
+});
+
+// ── START ─────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>

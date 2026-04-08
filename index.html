@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rippner Tennis — Internal Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --charcoal: #1B4458;
+    --charcoal-dark: #132f3d;
+    --platinum: #F1F5F5;
+    --steel: #7CA6BA;
+    --lime: #95D600;
+    --border: #d8e4ea;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Barlow', sans-serif;
+    font-weight: 300;
+    background: var(--platinum);
+    color: var(--charcoal);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: var(--charcoal);
+    padding: 36px 48px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .logo { display: flex; align-items: center; gap: 14px; }
+  .logo-mark {
+    width: 42px; height: 42px;
+    background: var(--lime);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 20px;
+    color: var(--charcoal);
+    letter-spacing: -0.5px;
+    flex-shrink: 0;
+  }
+  .logo-text h1 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 26px;
+    color: white; letter-spacing: 0.3px; line-height: 1.1;
+  }
+  .logo-text p { font-size: 12px; color: var(--steel); margin-top: 3px; font-weight: 300; }
+  .header-tag {
+    font-size: 11px; font-weight: 500;
+    background: rgba(255,255,255,0.08);
+    color: var(--steel);
+    padding: 5px 12px; border-radius: 99px;
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+
+  .hero {
+    background: var(--charcoal-dark);
+    padding: 40px 48px 48px;
+    border-bottom: 3px solid var(--lime);
+  }
+  .hero h2 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 38px;
+    color: white; line-height: 1.05; letter-spacing: -0.5px;
+  }
+  .hero h2 span { color: var(--lime); }
+  .hero p { color: var(--steel); font-size: 15px; margin-top: 10px; max-width: 480px; line-height: 1.6; }
+
+  main { flex: 1; padding: 40px 48px 60px; }
+
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    margin-top: 4px;
+  }
+
+  .tool-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: box-shadow 0.2s, transform 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .tool-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--lime);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.2s ease;
+  }
+  .tool-card:hover { box-shadow: 0 6px 24px rgba(27,68,88,0.1); transform: translateY(-2px); }
+  .tool-card:hover::before { transform: scaleX(1); }
+
+  .tool-card.disabled { opacity: 0.55; cursor: default; pointer-events: none; }
+  .tool-card.external::after {
+    content: '↗';
+    position: absolute; top: 20px; right: 20px;
+    font-size: 14px; color: var(--steel);
+  }
+
+  .tool-icon {
+    width: 44px; height: 44px;
+    background: var(--platinum);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .tool-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 20px;
+    letter-spacing: 0.2px;
+    line-height: 1.1;
+  }
+  .tool-desc { font-size: 13px; color: #4a6a7c; line-height: 1.6; font-weight: 300; }
+  .tool-tag {
+    display: inline-block;
+    font-size: 10px; font-weight: 500;
+    padding: 3px 9px; border-radius: 99px;
+    background: #eaf7ed; color: #2A7A3B;
+    letter-spacing: 0.3px; text-transform: uppercase;
+    margin-top: auto;
+    align-self: flex-start;
+  }
+  .tool-tag.yellow { background: #fdf6e3; color: #B07D00; }
+  .tool-tag.gray { background: #f0f0f5; color: #5A5A6E; }
+
+  .section-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 11px;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--steel); margin-bottom: 16px;
+  }
+
+  footer {
+    text-align: center;
+    font-size: 11px; color: var(--steel);
+    padding: 20px;
+    border-top: 1px solid var(--border);
+    background: white;
+  }
+
+  @media (max-width: 640px) {
+    header, .hero, main { padding-left: 20px; padding-right: 20px; }
+    .hero h2 { font-size: 28px; }
+    .tools-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">RT</div>
+    <div class="logo-text">
+      <h1>Rippner Tennis</h1>
+      <p>Internal Tools &amp; Resources</p>
+    </div>
+  </div>
+  <div class="header-tag">Staff Use Only</div>
+</header>
+
+<div class="hero">
+  <h2>Tools &<br><span>Resources</span></h2>
+  <p>Internal tools for scheduling, staff tracking, and operations. For questions, contact management.</p>
+</div>
+
+<main>
+  <div class="section-label">Available Tools</div>
+  <div class="tools-grid">
+
+    <a href="scheduling/index.html" class="tool-card">
+      <div class="tool-icon">📅</div>
+      <div class="tool-name">Coach Scheduler</div>
+      <div class="tool-desc">View and manage coach schedules across all locations. Supports SATC, Pharr, and Wilco sites.</div>
+      <div class="tool-tag">Scheduling</div>
+    </a>
+
+    <a href="https://script.google.com/a/macros/rippnertennis.com/s/AKfycbx_5bvrA9p1xRUXGWLZA81CFregD910LYXLlyrnASR8cWau-G32DMKSCaFjuecuS6I/exec" class="tool-card external" id="davin-card">
+      <div class="tool-icon">📊</div>
+      <div class="tool-name">Davin — Branch Manager Tracker</div>
+      <div class="tool-desc">Track Davin's branch manager responsibilities and progress across all four operational areas.</div>
+      <div class="tool-tag yellow">Leadership</div>
+    </a>
+
+  </div>
+</main>
+
+<footer>Rippner Tennis · Internal Use Only · <span id="year"></span></footer>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>
