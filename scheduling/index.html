@@ -726,7 +726,7 @@ function ss(cid, day, v) {
       } catch(e) { setSyncPill('error', 'Save failed'); }
     }, 600);
   } else {
-    try { localStorage.setItem('coach_template_v1', JSON.stringify(schedule)); } catch(e) {}
+    try { localStorage.setItem('coach_template_v2', JSON.stringify(schedule)); } catch(e) {}
   }
 }
 
@@ -744,13 +744,13 @@ async function loadSched() {
     document.getElementById('preview-banner').style.display = 'flex';
     setSyncPill('local', 'Preview only');
     try {
-      const saved = localStorage.getItem('coach_template_v1');
+      const saved = localStorage.getItem('coach_template_v2');
       const stored = saved ? JSON.parse(saved) : {};
       schedule = { ...INITIAL_SCHEDULE, ...stored };
     } catch(e) {
       schedule = { ...INITIAL_SCHEDULE };
     }
-    try { localStorage.setItem('coach_template_v1', JSON.stringify(schedule)); } catch(e) {}
+    try { localStorage.setItem('coach_template_v2', JSON.stringify(schedule)); } catch(e) {}
   }
 }
 
@@ -765,11 +765,11 @@ function lpip(loc) { return `<span class="lpip ${loc}">${LOCS[loc].name}</span>`
 
 // ── LOCK STORE ────────────────────────────────────────────────────────────────
 function saveLocks() {
-  try { localStorage.setItem('coach_locks_v1', JSON.stringify({ coaches: [...lockedCoaches], shifts: [...lockedShifts] })); } catch(e) {}
+  try { localStorage.setItem('coach_locks_v2', JSON.stringify({ coaches: [...lockedCoaches], shifts: [...lockedShifts] })); } catch(e) {}
 }
 function loadLocks() {
   try {
-    const s = localStorage.getItem('coach_locks_v1');
+    const s = localStorage.getItem('coach_locks_v2');
     if (s) { const d = JSON.parse(s); lockedCoaches = new Set(d.coaches); lockedShifts = new Set(d.shifts); }
   } catch(e) {}
 }
@@ -979,10 +979,10 @@ function getCoverage(locKey, dayIdx, shift) {
 
 // ── REQUESTS STORE ────────────────────────────────────────────────────────────
 function saveReqs() {
-  try { localStorage.setItem('coach_requests_v1', JSON.stringify(requests)); } catch(e) {}
+  try { localStorage.setItem('coach_requests_v2', JSON.stringify(requests)); } catch(e) {}
 }
 function loadReqs() {
-  try { const s = localStorage.getItem('coach_requests_v1'); if (s) requests = JSON.parse(s); } catch(e) {}
+  try { const s = localStorage.getItem('coach_requests_v2'); if (s) requests = JSON.parse(s); } catch(e) {}
 }
 function addRequest(coachId, text, note) {
   requests.unshift({ id: Date.now(), coachId: parseInt(coachId), text, note, status: 'pending', createdAt: new Date().toISOString() });
