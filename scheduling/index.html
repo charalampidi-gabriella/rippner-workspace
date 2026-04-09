@@ -767,11 +767,26 @@ function lpip(loc) { return `<span class="lpip ${loc}">${LOCS[loc].name}</span>`
 function saveLocks() {
   try { localStorage.setItem('coach_locks_v2', JSON.stringify({ coaches: [...lockedCoaches], shifts: [...lockedShifts] })); } catch(e) {}
 }
+const DEFAULT_LOCKS = {
+  coaches: [4,3,8,9,10,11,13,19,25,12,14,18,28,16,22,23,27],
+  shifts: ["6_0_morning","6_0_evening","6_1_evening","6_1_morning","6_2_evening","6_3_morning","6_3_evening","6_6_morning","20_4_evening","20_5_evening","2_2_evening","2_3_evening","2_4_evening","2_5_evening","2_6_evening","24_2_evening","24_3_evening","24_4_evening","24_6_evening","21_0_morning","21_0_evening","21_1_evening","21_2_evening","21_6_morning"]
+};
 function loadLocks() {
   try {
     const s = localStorage.getItem('coach_locks_v2');
-    if (s) { const d = JSON.parse(s); lockedCoaches = new Set(d.coaches); lockedShifts = new Set(d.shifts); }
-  } catch(e) {}
+    if (s) {
+      const d = JSON.parse(s);
+      lockedCoaches = new Set(d.coaches);
+      lockedShifts  = new Set(d.shifts);
+    } else {
+      lockedCoaches = new Set(DEFAULT_LOCKS.coaches);
+      lockedShifts  = new Set(DEFAULT_LOCKS.shifts);
+      saveLocks();
+    }
+  } catch(e) {
+    lockedCoaches = new Set(DEFAULT_LOCKS.coaches);
+    lockedShifts  = new Set(DEFAULT_LOCKS.shifts);
+  }
 }
 function isCoachLocked(cid)             { return lockedCoaches.has(cid); }
 function isShiftLocked(cid, day, shift) { return lockedCoaches.has(cid) || lockedShifts.has(`${cid}_${day}_${shift}`); }
@@ -981,8 +996,23 @@ function getCoverage(locKey, dayIdx, shift) {
 function saveReqs() {
   try { localStorage.setItem('coach_requests_v2', JSON.stringify(requests)); } catch(e) {}
 }
+const DEFAULT_REQUESTS = [
+  {"id":1775664645633,"type":"request","coachId":20,"shift":"evening","action":"remove","days":[],"loc":"satc","note":"Nolan wants to remove a shift ","status":"pending","createdAt":"2026-04-08T16:10:45.633Z"},
+  {"id":1775169461640,"type":"request","coachId":1,"shift":"morning","action":"remove","days":[],"loc":"satc","note":"switching my day off from Thursdays to Sundays so that I could have one weekend day off hopefully.","status":"pending","createdAt":"2026-04-02T22:37:41.640Z"},
+  {"id":1775169428775,"type":"request","coachId":15,"shift":"evening","action":"to_morning","days":[],"loc":"satc","note":"I'm just looking at enrolling in some summer classes so I may need some accommodations to be made!","status":"pending","createdAt":"2026-04-02T22:37:08.775Z"}
+];
 function loadReqs() {
-  try { const s = localStorage.getItem('coach_requests_v2'); if (s) requests = JSON.parse(s); } catch(e) {}
+  try {
+    const s = localStorage.getItem('coach_requests_v2');
+    if (s) {
+      requests = JSON.parse(s);
+    } else {
+      requests = DEFAULT_REQUESTS.map(r => ({...r}));
+      saveReqs();
+    }
+  } catch(e) {
+    requests = DEFAULT_REQUESTS.map(r => ({...r}));
+  }
 }
 function addRequest(coachId, text, note) {
   requests.unshift({ id: Date.now(), coachId: parseInt(coachId), text, note, status: 'pending', createdAt: new Date().toISOString() });
