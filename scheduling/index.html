@@ -709,7 +709,8 @@ function hideLoadingOverlay() {
   setTimeout(() => o.style.display = 'none', 320);
 }
 
-let saveTimer = null;
+const saveTimers = {};
+let pendingSaves = 0;
 
 function sk(cid, day)    { return `${cid}_${day}`; }
 function gs(cid, day)    { return schedule[sk(cid, day)] || { morning: null, evening: null }; }
@@ -717,13 +718,18 @@ function ss(cid, day, v) {
   const key = sk(cid, day);
   schedule[key] = v;
   if (IS_APPS_SCRIPT) {
+    pendingSaves++;
     setSyncPill('saving', 'Saving…');
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(async () => {
+    clearTimeout(saveTimers[key]);
+    saveTimers[key] = setTimeout(async () => {
       try {
         await runScript('saveShift', key, v.morning, v.evening);
-        setSyncPill('live', 'Saved ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
-      } catch(e) { setSyncPill('error', 'Save failed'); }
+        pendingSaves--;
+        if (pendingSaves <= 0) {
+          pendingSaves = 0;
+          setSyncPill('live', 'Saved ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
+        }
+      } catch(e) { pendingSaves = 0; setSyncPill('error', 'Save failed'); }
     }, 600);
   } else {
     try { localStorage.setItem('coach_template_v2', JSON.stringify(schedule)); } catch(e) {}
