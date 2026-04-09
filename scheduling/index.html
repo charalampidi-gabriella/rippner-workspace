@@ -1070,6 +1070,7 @@ function renderOverview() {
   const thead = `<thead><tr>
     <th>Coach</th>
     ${DAYS.map(d => `<th>${d}</th>`).join('')}
+    <th style="text-align:center;color:var(--muted);font-size:11px;letter-spacing:.5px;">#</th>
   </tr></thead>`;
 
   const tbody = `<tbody>${coaches.map(c => {
@@ -1141,6 +1142,14 @@ function renderOverview() {
         </td>`;
       }
     }).join('')}
+    ${(() => {
+      const total = DAYS.reduce((n, _, i) => {
+        const s = editMode ? previewSched(c.id, i) : gs(c.id, i);
+        return n + (s.morning ? 1 : 0) + (s.evening ? 1 : 0);
+      }, 0);
+      const color = total === 0 ? 'var(--muted)' : total >= 10 ? '#16a34a' : total >= 6 ? '#2563eb' : 'var(--text)';
+      return `<td style="text-align:center;font-size:13px;font-weight:600;color:${color};white-space:nowrap;padding:0 10px;border-left:1px solid var(--border);">${total > 0 ? total : '—'}</td>`;
+    })()}
   </tr>`;
   }).join('')}</tbody>`;
 
