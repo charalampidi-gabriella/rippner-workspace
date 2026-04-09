@@ -1147,7 +1147,7 @@ function renderOverview() {
         const s = editMode ? previewSched(c.id, i) : gs(c.id, i);
         return n + (s.morning ? 1 : 0) + (s.evening ? 1 : 0);
       }, 0);
-      const color = total === 0 ? 'var(--muted)' : total >= 10 ? '#16a34a' : total >= 6 ? '#2563eb' : 'var(--text)';
+      const color = total === 0 ? 'var(--muted)' : total > 6 ? '#d97706' : 'var(--text)';
       return `<td style="text-align:center;font-size:13px;font-weight:600;color:${color};white-space:nowrap;padding:0 10px;border-left:1px solid var(--border);">${total > 0 ? total : '—'}</td>`;
     })()}
   </tr>`;
