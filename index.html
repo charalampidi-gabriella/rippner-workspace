@@ -165,76 +165,7 @@
   }
 </style>
 </head>
-<style>
-  #lock-screen {
-    position: fixed; inset: 0;
-    background: var(--charcoal-dark);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 9999;
-  }
-  #lock-screen.hidden { display: none; }
-  .lock-box {
-    background: var(--charcoal);
-    border-radius: 16px;
-    padding: 40px 36px;
-    width: 100%; max-width: 360px;
-    text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-  }
-  .lock-box .lock-mark {
-    width: 56px; height: 56px;
-    background: var(--lime);
-    border-radius: 14px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 26px;
-    margin: 0 auto 20px;
-  }
-  .lock-box h2 {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700; font-size: 22px;
-    color: white; margin-bottom: 6px;
-  }
-  .lock-box p { font-size: 13px; color: var(--steel); margin-bottom: 24px; }
-  .lock-box input {
-    width: 100%;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 10px;
-    padding: 13px 16px;
-    font-size: 16px; font-family: 'Barlow', sans-serif;
-    color: white; outline: none;
-    margin-bottom: 12px;
-    letter-spacing: 2px;
-  }
-  .lock-box input:focus { border-color: var(--lime); }
-  .lock-box button {
-    width: 100%;
-    background: var(--lime);
-    color: var(--charcoal);
-    border: none; border-radius: 10px;
-    padding: 13px; font-size: 15px;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700; letter-spacing: 0.5px;
-    cursor: pointer; transition: opacity .15s;
-  }
-  .lock-box button:hover { opacity: 0.88; }
-  .lock-error {
-    font-size: 13px; color: #e74c3c;
-    margin-top: 10px; min-height: 18px;
-  }
-</style>
 <body>
-
-<div id="lock-screen">
-  <div class="lock-box">
-    <div class="lock-mark">🔒</div>
-    <h2>Rippner Tennis</h2>
-    <p>Internal access only. Enter your password to continue.</p>
-    <input type="password" id="pwd-input" placeholder="Password" onkeydown="if(event.key==='Enter')unlock()">
-    <button onclick="unlock()">Enter</button>
-    <div class="lock-error" id="lock-error"></div>
-  </div>
-</div>
 
 <header>
   <div class="logo">
@@ -298,30 +229,6 @@
 
 <script>
   document.getElementById("year").textContent = new Date().getFullYear();
-
-  const PASS_HASH = '750882e2baa379914dece2e5485708bfbfd4764191689029e66be668ab94ec05';
-
-  async function hashStr(str) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-  }
-
-  async function unlock() {
-    const val = document.getElementById('pwd-input').value;
-    const hash = await hashStr(val);
-    if (hash === PASS_HASH) {
-      sessionStorage.setItem('rt_auth', '1');
-      document.getElementById('lock-screen').classList.add('hidden');
-    } else {
-      document.getElementById('lock-error').textContent = 'Incorrect password.';
-      document.getElementById('pwd-input').value = '';
-      document.getElementById('pwd-input').focus();
-    }
-  }
-
-  if (sessionStorage.getItem('rt_auth') === '1') {
-    document.getElementById('lock-screen').classList.add('hidden');
-  }
 </script>
 
 </body>
