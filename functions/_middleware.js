@@ -5,7 +5,11 @@ export async function onRequest(context) {
   const expectedPass = env.BASIC_AUTH_PASS;
 
   if (!expectedUser || !expectedPass) {
-    return new Response("Auth not configured", { status: 500 });
+    const keys = Object.keys(env || {}).join(",");
+    return new Response(
+      "Auth not configured. env keys: [" + keys + "]. user=" + JSON.stringify(expectedUser) + " pass=" + (expectedPass ? "SET" : "MISSING"),
+      { status: 500, headers: { "Content-Type": "text/plain" } }
+    );
   }
 
   const header = request.headers.get("Authorization");
